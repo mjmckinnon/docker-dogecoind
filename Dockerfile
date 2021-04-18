@@ -13,7 +13,7 @@ ENV PATH=/opt/dogecoin-${DOGECOIN_VERSION}/bin:$PATH
 
 RUN curl -SLO "https://github.com/dogecoin/dogecoin/releases/download/v${DOGECOIN_VERSION}/dogecoin-${DOGECOIN_VERSION}-x86_64-linux-gnu.tar.gz" \
 && tar -xzf *.tar.gz -C /opt \
-&& rm *.tar.gz *.asc \
+&& rm *.tar.gz \
 && rm -rf /opt/dogecoin-${DOGECOIN_VERSION}/bin/dogecoin-qt
 
 WORKDIR /home/dogecoin

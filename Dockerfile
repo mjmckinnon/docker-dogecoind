@@ -25,6 +25,6 @@ VOLUME ["/home/dogecoin/.dogecoin"]
 
 EXPOSE 22556/tcp 22556/udp 22555/tcp 44556/tcp 44556/udp 44555/tcp
 
-RUN dogecoind -version | grep "Dogecoin: v${DOGECOIND_VERSION}"
+RUN dogecoind -version | grep "Dogecoin: v${DOGECOIN_VERSION}"
 
 CMD ["dogecoind", "-printtoconsole"]

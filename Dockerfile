@@ -50,6 +50,8 @@ RUN \
     libboost-thread1.71.0 \
     libevent-2.1-7 \
     libevent-pthreads-2.1-7 \
+    libboost-program-options1.71.0 \
+    libboost-chrono1.71.0 \
     libczmq4 \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \

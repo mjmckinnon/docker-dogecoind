@@ -1,27 +1,62 @@
+FROM mjmckinnon/ubuntubuild:latest as builder
+
+ARG VERSION="v1.14.3"
+ARG GITREPO="https://github.com/dogecoin/dogecoin.git"
+ARG GITNAME="dogecoin"
+ARG COMPILEFLAGS="--disable-tests --disable-bench --enable-cxx --disable-shared --with-pic --disable-wallet --without-gui --without-miniupnpc"
+ENV DEBIAN_FRONTEND="noninteractive"
+
+# Get the source from Github
+WORKDIR /root
+RUN git clone ${GITREPO} --branch ${VERSION}
+WORKDIR /root/${GITNAME}
+RUN \
+    echo "** compile **" \
+    && ./autogen.sh \
+    && ./configure CXXFLAG="-O2" LDFLAGS=-static-libstdc++ ${COMPILEFLAGS} \
+    && make \
+    && echo "** install and strip the binaries **" \
+    && mkdir -p /dist-files \
+    && make install DESTDIR=/dist-files \
+    && strip /dist-files/usr/local/bin/* \
+    && echo "** removing extra lib files **" \
+    && find /dist-files -name "lib*.la" -delete \
+    && find /dist-files -name "lib*.a" -delete \
+    && cd .. && rm -rf ${GITREPO}
+
+# Final stage
 FROM ubuntu:20.04
+LABEL maintainer="Michael J. McKinnon <mjmckinnon@gmail.com>"
 
-RUN useradd -m -s /bin/bash -u 1000 dogecoin
-RUN apt-get update -y
-RUN apt-get upgrade -y
-RUN apt-get install -y curl net-tools
-RUN apt-get clean
-RUN rm -rvf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# Put our entrypoint script in
+COPY ./docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-ENV DOGECOIN_VERSION="1.14.3"
-ENV DOGECOIN_DATA="/home/dogecoin/.dogecoin"
-ENV PATH="/opt/dogecoin-${DOGECOIN_VERSION}/bin:${PATH}"
+# Copy the compiled files
+COPY --from=builder /dist-files/ /
 
-RUN curl -SLO "https://github.com/dogecoin/dogecoin/releases/download/v${DOGECOIN_VERSION}/dogecoin-${DOGECOIN_VERSION}-x86_64-linux-gnu.tar.gz"
-RUN tar -xzf *.tar.gz -C /opt
-RUN rm *.tar.gz
-RUN rm -rf /opt/dogecoin-${DOGECOIN_VERSION}/bin/dogecoin-qt
+RUN \
+    echo "** setup the dogecoin user **" \
+    && groupadd -g 1000 dogecoin \
+    && useradd -u 1000 -g dogecoin dogecoin
 
-WORKDIR /home/dogecoin
-USER dogecoin
-RUN mkdir .dogecoin
-RUN chmod 700 .dogecoin
+ENV DEBIAN_FRONTEND="noninteractive"
+RUN \
+    echo "** update and install dependencies ** " \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    gosu \
+    libboost-filesystem1.71.0 \
+    libboost-thread1.71.0 \
+    libevent-2.1-7 \
+    libevent-pthreads-2.1-7 \
+    libczmq4 \
+    && apt-get clean autoclean \
+    && apt-get autoremove --yes \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+    && rm -rf /tmp/* /var/tmp/*
 
-VOLUME ["${DOGECOIN_DATA}"]
-EXPOSE 22556/tcp 22556/udp 22555/tcp 44556/tcp 44556/udp 44555/tcp
-RUN dogecoind -version
+ENV DATADIR="/data"
+EXPOSE 22556
+VOLUME /data
 CMD ["dogecoind", "-printtoconsole"]

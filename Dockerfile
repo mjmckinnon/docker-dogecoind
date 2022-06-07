@@ -1,6 +1,6 @@
 FROM mjmckinnon/ubuntubuild:latest as builder
 
-ARG VERSION="v1.14.3"
+ARG VERSION="v1.14.5"
 ARG GITREPO="https://github.com/dogecoin/dogecoin.git"
 ARG GITNAME="dogecoin"
 ARG COMPILEFLAGS="--disable-tests --disable-bench --enable-cxx --disable-shared --with-pic --disable-wallet --without-gui --without-miniupnpc"

@@ -1,4 +1,4 @@
-FROM mjmckinnon/ubuntubuild:latest AS builder
+FROM mjmckinnon/ubuntubuild:22.04 AS builder
 
 ARG VERSION="v1.14.9"
 ARG GITREPO="https://github.com/dogecoin/dogecoin.git"
@@ -9,20 +9,11 @@ ENV DEBIAN_FRONTEND="noninteractive"
 # Get the source from Github
 WORKDIR /root
 RUN git clone ${GITREPO} --branch ${VERSION}
+
+# Run the build script under /root/dogecoin/
 WORKDIR /root/${GITNAME}
-RUN \
-    echo "** compile **" \
-    && ./autogen.sh \
-    && ./configure CXXFLAG="-O2" LDFLAGS=-static-libstdc++ ${COMPILEFLAGS} \
-    && make \
-    && echo "** install and strip the binaries **" \
-    && mkdir -p /dist-files \
-    && make install DESTDIR=/dist-files \
-    && strip /dist-files/usr/local/bin/* \
-    && echo "** removing extra lib files **" \
-    && find /dist-files -name "lib*.la" -delete \
-    && find /dist-files -name "lib*.a" -delete \
-    && cd .. && rm -rf ${GITREPO}
+COPY build.sh .
+RUN chmod +x ./build.sh && ./build.sh "$VERSION" "$COMPILEFLAGS"
 
 # Final stage
 FROM ubuntu:22.04
@@ -35,18 +26,18 @@ COPY ./docker-entrypoint.sh /usr/local/bin/
 COPY --from=builder /dist-files/ /
 
 ENV DEBIAN_FRONTEND="noninteractive"
-RUN \
-    echo "** update and install dependencies ** " \
+RUN set -e \
+    && echo "** update and install dependencies ** " \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
        gosu \
-       libboost-filesystem1.74.0 \
-       libboost-thread1.74.0 \
-       libevent-2.1-7 \
-       libevent-pthreads-2.1-7 \
-       libboost-program-options1.74.0 \
-       libboost-chrono1.74.0 \
-       libczmq4 \
+       libboost-filesystem1.83.0 \
+       libboost-thread1.83.0 \
+       libevent-2.1-7t64 \
+       libevent-pthreads-2.1-7t64 \
+       libboost-program-options1.83.0 \
+       libboost-chrono1.83.0 \
+       libzmq3-dev \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
